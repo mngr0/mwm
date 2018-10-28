@@ -4,6 +4,15 @@ module sensor(){
         square([20, 50]);
     
 }
+
+module rounded_square( width, radius_corner ) {
+	translate( [ radius_corner, radius_corner, 0 ] )
+		minkowski() {
+			square( width - 2 * radius_corner );
+			circle( radius_corner ,$fn=30);
+		}
+}
+
 module engine(){
         linear_extrude(height = 40)
             square([30, 50]);
@@ -15,6 +24,14 @@ module engine(){
         }
     
 }
+
+module hole(d,y,z,h){ 
+    translate([0,y,z])
+        rotate([0,90,0])
+            linear_extrude(height = h)
+                circle(d,$fn=30);
+    }
+
 module guide(){
     linear_extrude(height = 300)
             difference(){
@@ -35,14 +52,17 @@ module baseSide(){
            linear_extrude(height = 21)
         square([20, 50]);
     }
-}   
+}
 module basePlusGuide(){
 baseSide();
-    translate([170,0,30])
-guide();
-    translate([30,100,30])
+    difference(){
+        translate([170,0,30])
+            guide();
+        
+    }
+translate([30,100,30])
     rotate([0,0,180])
-guide();
+        guide();
     
 }
 module topSide(){
@@ -54,9 +74,34 @@ module topSide(){
                 square([170, 10]);
     }
 }
+
+module maschera(){
+        vite=2.5/2;
+        buco=20/2;
+        centroZ=300;
+        centroY=35-buco+1;
+        distanzaViti=31;
+        scavo=43;
+    
+        hole(vite,centroY+distanzaViti/2,centroZ+distanzaViti/2,100);
+        hole(vite,centroY+distanzaViti/2,centroZ-distanzaViti/2,100);        
+        hole(vite,centroY-distanzaViti/2,centroZ+distanzaViti/2,100);
+        hole(vite,centroY-distanzaViti/2,centroZ-distanzaViti/2,100);
+        hole(buco,centroY,centroZ,200);
+        translate([0,centroY-scavo/2,centroZ+scavo/2])
+            rotate([0,90,0])
+                linear_extrude(height=22)
+                    rounded_square(scavo,2);
+
+    }
+
 module total(){
-    basePlusGuide();
-    translate([0,0,300])   
-        topSide();
+    difference(){
+        basePlusGuide();
+        maschera();
+    }
+        //translate([0,0,300])   
+    //    topSide();
 }
 total();
+
