@@ -33,7 +33,7 @@ module hole(d,y,z,h){
     }
 
 module guide(){
-    linear_extrude(height = 300)
+    linear_extrude(height = 330)
             difference(){
         square([30, 100]);
         translate([0,30])
@@ -43,7 +43,7 @@ module guide(){
     }
 }
 
-module baseSide(){
+module baseSideOld(){
  difference(){
         linear_extrude(height = 30)
             square([200, 100]);
@@ -52,6 +52,11 @@ module baseSide(){
            linear_extrude(height = 21)
         square([20, 50]);
     }
+}
+module baseSide(){
+        linear_extrude(height = 30)
+            square([200, 100]);
+
 }
 module basePlusGuide(){
 baseSide();
@@ -78,7 +83,7 @@ module topSide(){
 module maschera(){
         vite=2.5/2;
         buco=20/2;
-        centroZ=300;
+        centroZ=330;
         centroY=35-buco+1;
         distanzaViti=31;
         scavo=43;
@@ -100,8 +105,8 @@ module total(){
         basePlusGuide();
         maschera();
     }
-        //translate([0,0,300])   
-    //    topSide();
+        //translate([0,0,330])   
+        //topSide();
 }
 total();
 
