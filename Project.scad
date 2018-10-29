@@ -5,7 +5,7 @@ diametro_rullo = 10;
 buco=diametro_rullo+1;
 
 centroZ=300;
-centroY=35-buco+2;
+centroY=38-buco/2;
 distanzaViti=31;
 lato_motore=41;
 scavo=lato_motore+2;
@@ -66,9 +66,9 @@ module guide2(){
 module guide_with_diff(){
     difference(){
         guide2();
-    translate([0,27,262.5])
-        linear_extrude(height=15.25)
-            rounded_square(20,12,2);
+    //translate([0,27,262.5])
+     //   linear_extrude(height=15.25)
+     //       rounded_square(20,12,2);
     }
 }
 
@@ -176,7 +176,7 @@ module buco_sensore(){
 module buchi_sensori(){
     buco_sensore();
     
-    translate([0,0,100])
+    translate([0,0,110])
         buco_sensore();
     
 }
