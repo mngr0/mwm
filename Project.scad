@@ -1,7 +1,7 @@
 echo(version=version());
 
-vite=2.5/2;
-diametro_rullo = 7;
+vite=2.5;
+diametro_rullo = 10;
 buco=diametro_rullo+1;
 
 centroZ=300;
@@ -11,7 +11,7 @@ lato_motore=41;
 scavo=lato_motore+2;
 
 engine_rot = 21;
-rot_diam=5;
+rot_diam=4;
 
 module sensor(){
     linear_extrude(height = 25)
@@ -36,21 +36,39 @@ module engine(){
         }
 }
 
-module hole(d,y,z,h){ 
-    translate([0,y,z])
+module hole(d,x,y,z,h){ 
+    translate([x,y,z])
         rotate([0,90,0])
             linear_extrude(height = h)
-                circle(d,$fn=30);
+                circle(d/2,$fn=30);
     }
 
 module guide(){
     linear_extrude(height = 300)
             difference(){
         square([30, 100]);
-        translate([0,30])
-            square([20,10]);
+        translate([0,37])
+            square([20,3]);
         translate([0,60])
             square([20,10]);
+    }
+}
+module guide2(){
+    linear_extrude(height = 300)
+            difference(){
+        square([30, 100]);
+        translate([0,37])
+            square([10,3]);
+        translate([0,60])
+            square([20,10]);
+    }
+}
+module guide_with_diff(){
+    difference(){
+        guide2();
+    translate([0,27,262.5])
+        linear_extrude(height=15.25)
+            rounded_square(20,12,2);
     }
 }
 
@@ -63,9 +81,9 @@ module baseSide(){
 module basePlusGuide(){
     baseSide();
     translate([170,0,30])
-        guide();
-    translate([30,100,30])
-        rotate([0,0,180])
+        guide_with_diff();
+    translate([30,00,30])
+        mirror([1,0,0])
             guide();
     
 }
@@ -82,11 +100,11 @@ module topSide(){
 module maschera(){
         offset=20;
     
-        hole(vite,centroY+distanzaViti/2,centroZ+distanzaViti/2,100);
-        hole(vite,centroY+distanzaViti/2,centroZ-distanzaViti/2,100);        
-        hole(vite,centroY-distanzaViti/2,centroZ+distanzaViti/2,100);
-        hole(vite,centroY-distanzaViti/2,centroZ-distanzaViti/2,100);
-        hole(buco,centroY,centroZ,200);
+        hole(vite,0,centroY+distanzaViti/2,centroZ+distanzaViti/2,100);
+        hole(vite,0,centroY+distanzaViti/2,centroZ-distanzaViti/2,100);        
+        hole(vite,0,centroY-distanzaViti/2,centroZ+distanzaViti/2,100);
+        hole(vite,0,centroY-distanzaViti/2,centroZ-distanzaViti/2,100);
+        hole(buco,0,centroY,centroZ,200);
         translate([0,centroY-scavo/2,centroZ+scavo/2+offset])
             rotate([0,90,0])
                 linear_extrude(height=22)
@@ -95,15 +113,15 @@ module maschera(){
 
 module scanalature_elettronica(){
         //node
-        translate([195,55,300])
+        translate([195,50,300])
           rotate([0,90,0])
                 linear_extrude(height=10)
-                    rounded_square(50,25,2);
+                    rounded_square(55,25,2);
         //drv
-        translate([0,30,250])
+        translate([195,30,250])
             rotate([0,90,0])
-                linear_extrude(height=5)
-                    rounded_square(20,15,2);
+                linear_extrude(height=10)
+                    rounded_square(25,45,2);
     }
     
 module buchi_cavi(){
@@ -134,14 +152,43 @@ module buchi_cavi(){
             cylinder(  45,   7.5, 7.5,false,$fn=30);             
     }    
     
+module buco_sensore(){
+
+    //scarico connettore
+    translate([180,12,30])
+        linear_extrude(height=15)
+            rounded_square(25,13,2);
+
+    //buco sensore
+    translate([160,12,30])
+        linear_extrude(height=15)
+            rounded_square(25,43,2);
+    //retro
+    translate([190,12,30])
+        linear_extrude(height=15)
+            rounded_square(25,43,2);
+    hole(3,140,48,36,100);
+    hole(3,140,29,36,100);
+    
+    }    
+    
+    
+module buchi_sensori(){
+    buco_sensore();
+    
+    translate([0,0,100])
+        buco_sensore();
+    
+}
+
 
 module rullo(){
     translate([25,centroY,centroZ])
             difference(){
             rotate([0,90,0])
                 difference(){
-                    cylinder(  175,   diametro_rullo, diametro_rullo,false);
-                    cylinder(  20,   rot_diam+1, rot_diam+1,false);
+                    cylinder(  175,   diametro_rullo/2, diametro_rullo/2,false);
+                    cylinder(  20,   (rot_diam+1)/2, (rot_diam+1)/2,false,$fn=30);
                 }
                 translate([30,0,-10])
                     cylinder(  20,   2, 2,false,$fn=30);
@@ -152,21 +199,64 @@ module rullo(){
             }
     }
 
+module sensore(){
+    base_height=1.6;
+    base_lenght=33;
+    base_width=10;
+    sensor_lenght=24;
+    sensor_width=7;
+    total_height=12;
+    sensor_thick=4.5;
+    sensor_side=6;
+    sensor_center=3;
+    sensor_offset=0.5;
+    connector_lenght=6;
+    connector_height=10;
+    hole_diam=3;
+    hole_side=1;
+    difference(){
+        union(){
+        linear_extrude(height=base_height)
+            square([base_width,base_lenght]);
+        translate([(base_width-sensor_width)/2,sensor_offset,base_height])
+            linear_extrude(height=base_height)
+                square([sensor_width,sensor_lenght]);
+        translate([(base_width-sensor_width)/2,sensor_offset+sensor_side,base_height])
+            linear_extrude(height=total_height)
+                square([sensor_width,sensor_thick]);
+        translate([(base_width-sensor_width)/2,sensor_offset+sensor_side+sensor_thick+sensor_center,base_height])
+            linear_extrude(height=total_height)
+                square([sensor_width,sensor_thick]);
+        translate([0,base_lenght-connector_lenght,-connector_height])
+            linear_extrude(height=connector_height)
+                square([base_width,connector_lenght]); 
+        }
+        translate([base_width/2,sensor_offset+hole_side+hole_diam/2,0])
+            cylinder(10,hole_diam/2,hole_diam/2,false,$fn=30);
+        translate([base_width/2,sensor_lenght+sensor_offset-(hole_side+hole_diam/2),0])
+            cylinder(10,hole_diam/2,hole_diam/2,false,$fn=30);
+    }
+}
+
 module total(){
     difference(){
        basePlusGuide();
        maschera();
        scanalature_elettronica();
-      buchi_cavi();
+       buchi_cavi();
+    //}
+       buchi_sensori();
     }
-    translate ([0,-200,0])
-        buchi_cavi();
     //rullo();
     //translate([-8,centroY-lato_motore/2,centroZ-lato_motore/2])
-    //    engine();
+    //engine();
+    //translate([184,51,41])
+    //rotate([180,90,0])
+    //sensore();
 }
 
 
-
+//minkowski(){
 total();
-
+//cylinder(r=2,h=1);
+//}
