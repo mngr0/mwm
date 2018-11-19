@@ -5,7 +5,7 @@
 #define SENS_CMDDOWN "D"
 
 
-#define idTAPPARELLA "TAPPARELLA"
+#define TAPPARELLA "TAPPARELLA"
 
 #define   MESH_SSID       "whateverYouLike"
 #define   MESH_PASSWORD   "somethingSneaky"
