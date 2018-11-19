@@ -1,12 +1,5 @@
 #include <painlessMesh.h>
 #include <Arduino.h>
-
-
-
-#define TAPPARELLA "TAPPARELLA"
-
-
-
 // Prototypes
 void sendMessageTapparella(String msg);
 void receivedCallback(uint32_t from, String & msg);
