@@ -14,12 +14,9 @@
 
 int state;
 
-// some gpio pin that is connected to an LED...
-// on my rig, this is 5, change to the right number of your LED.
-#define   LED             2       // GPIO number of connected LED, ON ESP-12 IS GPIO2
-
 // Prototypes
-void sendMessage();
+void sendDone();
+void sendBroadcast();
 void receivedCallback(uint32_t from, String & msg);
 void newConnectionCallback(uint32_t nodeId);
 void changedConnectionCallback();
@@ -27,21 +24,17 @@ void changedConnectionCallback();
 
 Scheduler     userScheduler; // to control your personal task
 painlessMesh  mesh;
-String upDone= "UPDONE";
-String downDone= "DOWNDONE";
-bool calc_delay = false;
+//String upDone= "UPDONE";
+//String downDone= "DOWNDONE";
 SimpleList<uint32_t> nodes;
 
-Task taskSendMessage( TASK_SECOND * 5, TASK_FOREVER, &sendMessage ); // start with a one second interval
+Task taskSendMessage( TASK_SECOND * 30, TASK_FOREVER, &sendBroadcast ); // start with a one second interval
 
-// Task to blink the number of nodes
-Task blinkNoNodes;
-bool onFlag = false;
+uint32_t idBrain=NULL;
 
 void setup() {
   Serial.begin(9600);
 
-  pinMode(LED, OUTPUT);
 
   //mesh.setDebugMsgTypes( ERROR | MESH_STATUS | CONNECTION | SYNC | COMMUNICATION | GENERAL | MSG_TYPES | REMOTE ); // all types on
   //mesh.setDebugMsgTypes(ERROR | DEBUG | CONNECTION | COMMUNICATION);  // set before init() so that you can see startup messages
@@ -55,8 +48,6 @@ void setup() {
   userScheduler.addTask( taskSendMessage );
   taskSendMessage.enable();
 
-  userScheduler.addTask(blinkNoNodes);
-  blinkNoNodes.enable();
 
   randomSeed(analogRead(A0));
 
@@ -73,13 +64,15 @@ void tapparella_update() {
         state=STATE_IDLE;
         analogWrite(MOTOR_STEP,0);
         Serial.println("UP completed");
-        mesh.sendBroadcast(upDone);
+      //  mesh.sendBroadcast(upDone);
+        sendDone();
       }
       if(digitalRead(SENS_DOWN) && state==STATE_GOING_DOWN){
         state=STATE_IDLE;
         analogWrite(MOTOR_STEP,0);
         Serial.println("DOWN completed");
-        mesh.sendBroadcast(downDone);
+      //  mesh.sendBroadcast(downDone);
+        sendDone();
       }
 }
 
@@ -88,23 +81,24 @@ void loop() {
   userScheduler.execute(); // it will run mesh scheduler as well
   mesh.update();
   tapparella_update();
-  digitalWrite(LED, !onFlag);
 }
 
-void sendMessage() {
-  String msg = "IAMTAPPARELLA";
-  mesh.sendBroadcast(msg);
+void sendBroadcast() {
+//  String msg = "IAMTAPPARELLA";
+  mesh.sendBroadcast(TAPPARELLA);
+
+}
+void sendDone(){
+  mesh.sendSingle(idBrain,TAPPARELLADONE);
 
 }
 
 
 void receivedCallback(uint32_t from, String & msg) {
   Serial.printf("startHere: Received from %u msg=%s\n", from, msg.c_str());
-  Serial.printf("U:%d\n",msg.indexOf(SENS_CMDUP));
-  Serial.printf("D:%d\n",msg.indexOf(SENS_CMDDOWN));
-
   if(msg.indexOf(SENS_CMDDOWN)>=0){
     Serial.print("read DOWN,");
+    idBrain=from;
     if(state==STATE_IDLE){
       state=STATE_GOING_DOWN;
       analogWrite(MOTOR_STEP,255);
@@ -116,6 +110,7 @@ void receivedCallback(uint32_t from, String & msg) {
   }
   if(msg.indexOf(SENS_CMDUP)>=0){
     Serial.print("read UP,");
+    idBrain=from;
     if(state==STATE_IDLE){
       state=STATE_GOING_UP;
       analogWrite(MOTOR_STEP,255);
@@ -128,27 +123,16 @@ void receivedCallback(uint32_t from, String & msg) {
 }
 
 void newConnectionCallback(uint32_t nodeId) {
-  // Reset blink task
-  onFlag = false;
-  blinkNoNodes.setIterations((mesh.getNodeList().size() + 1) * 2);
-  //blinkNoNodes.enableDelayed(BLINK_PERIOD - (mesh.getNodeTime() % (BLINK_PERIOD*1000))/1000);
   Serial.printf("--> startHere: New Connection, nodeId = %u\n", nodeId);
 }
 
 void changedConnectionCallback() {
   Serial.printf("Changed connections %s\n", mesh.subConnectionJson().c_str());
-  // Reset blink task
-  onFlag = false;
-  //blinkNoNodes.setIterations((mesh.getNodeList().size() + 1) * 2);
-  //blinkNoNodes.enableDelayed(BLINK_PERIOD - (mesh.getNodeTime() % (BLINK_PERIOD*1000))/1000);
-
   nodes = mesh.getNodeList();
-
   SimpleList<uint32_t>::iterator node = nodes.begin();
   while (node != nodes.end()) {
     Serial.printf(" %u", *node);
     node++;
   }
   Serial.println();
-  calc_delay = true;
 }

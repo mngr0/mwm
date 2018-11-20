@@ -1,5 +1,7 @@
 #include <painlessMesh.h>
 #include <Arduino.h>
+#include "interface.h"
+
 // Prototypes
 void sendMessageTapparella(String msg);
 void receivedCallback(uint32_t from, String & msg);
@@ -16,11 +18,11 @@ SimpleList<uint32_t> nodes;
 
 String command;
 uint32_t idTapparella=NULL;
+bool firstRound=true;
+bool sendAgainTapparella=true;
 
 void setup() {
   Serial.begin(9600);
-
-  pinMode(LED, OUTPUT);
 
   //mesh.setDebugMsgTypes( ERROR | MESH_STATUS | CONNECTION | SYNC | COMMUNICATION | GENERAL | MSG_TYPES | REMOTE ); // all types on
   //mesh.setDebugMsgTypes(ERROR | DEBUG | CONNECTION | COMMUNICATION);  // set before init() so that you can see startup messages
@@ -32,15 +34,19 @@ void setup() {
   mesh.onChangedConnections(&changedConnectionCallback);
   mesh.onNodeTimeAdjusted(&nodeTimeAdjustedCallback);
   mesh.onNodeDelayReceived(&delayReceivedCallback);
-
 }
-
 void loop() {
-  //Serial.printf("Write U or D");
+  if(firstRound){
+ 	  Serial.printf("Write U or D");
+	   firstRound=false;
+  }
+
   command=Serial.readString();
-  if(command.length()>1){
+  if(command.length()>1 && sendAgainTapparella){
     sendMessageTapparella(command);
     command="";
+	  sendAgainTapparella=false;
+
   }
   userScheduler.execute(); // it will run mesh scheduler as well
   mesh.update();
@@ -55,7 +61,6 @@ void sendMessageTapparella(String msg) {
   if(idTapparella!=NULL){
     mesh.sendSingle(idTapparella,msg);
     Serial.printf("Sending message: %s\n", msg.c_str());
-
   }else{
     Serial.printf("Non ci sono tapparelle\n");
 
@@ -66,11 +71,17 @@ void sendMessageTapparella(String msg) {
 
 void receivedCallback(uint32_t from, String & msg) {
   //Serial.printf("startHere: Received from %u msg=%s\n", from, msg.c_str());
-  if(msg.indexOf(TAPPARELLA) > 0){
+  if(msg.indexOf(TAPPARELLA) >= 0){
     idTapparella=from;
     Serial.printf("Setted tapparella \n");
 
   }
+	if(msg.indexOf(TAPPARELLADONE)>=0){
+    Serial.printf("Tapparella is done\n");
+		sendAgainTapparella=true;
+	 	Serial.printf("Write U or D\n");
+  }
+
 }
 
 void newConnectionCallback(uint32_t nodeId) {

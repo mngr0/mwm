@@ -5,7 +5,10 @@
 #define SENS_CMDDOWN "D"
 
 
-#define TAPPARELLA "TAPPARELLA"
+String TAPPARELLA= "IAMTAPPARELLA";
+String TAPPARELLADONE= "TAPPARELLADONE";
+
+
 
 #define   MESH_SSID       "whateverYouLike"
 #define   MESH_PASSWORD   "somethingSneaky"
