@@ -247,12 +247,12 @@ module total(){
     //}
        buchi_sensori();
     }
-    //rullo();
-    //translate([-8,centroY-lato_motore/2,centroZ-lato_motore/2])
-    //engine();
-    //translate([184,51,41])
-    //rotate([180,90,0])
-    //sensore();
+    rullo();
+    translate([-8,centroY-lato_motore/2,centroZ-lato_motore/2])
+    engine();
+    translate([184,51,41])
+    rotate([180,90,0])
+    sensore();
 }
 
 

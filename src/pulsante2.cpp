@@ -4,7 +4,24 @@
 #include "../lib/CustomList.h"
 #include "../lib/interface.h"
 
-// How often the node should publish the temperature
+
+
+
+//#include <WiFi101.h>
+#include <TelegramBot.h>
+
+// Initialize Wifi connection to the router
+char ssid[] = "SECRET_SSID";             // your network SSID (name)
+char pass[] = "SECRET_PASS";           // your network key
+
+// Initialize Telegram BOT
+const char BotToken[] = "SECRET_BOT_TOKEN";
+WiFiSSLClient client;
+TelegramBot bot (BotToken, client);
+String whitelist[]= {"Ossigen0","TODO"};
+String comandi[]={"\tapUp","\tapDown"};
+
+
 
 // Mesh intantiation
 painlessMesh  mesh;
@@ -233,7 +250,7 @@ void receivedCallback( uint32_t from, String &msg ) {
   }
   else if (topic == TAPPARELLA_DONE_TOPIC){
     Serial.printf("Tapparella has completed the");
-    Serial.printf(payload);
+    //Serial.printf(payload);
     Serial.printf("operation\n");
     sendAgainTapparella=true;
     Serial.printf("Write U or D\n");
@@ -242,7 +259,6 @@ void receivedCallback( uint32_t from, String &msg ) {
 
 void setup() {
   Serial.begin(9600);
-  //mesh.setDebugMsgTypes( ERROR | MESH_STATUS | CONNECTION | SYNC | COMMUNICATION | GENERAL | MSG_TYPES | REMOTE ); // all types on
   mesh.setDebugMsgTypes( ERROR | STARTUP );  // set before init() so that you can see startup messages
 
   mesh.init(MESH_SSID, MESH_PASSWORD, MESH_PORT);
@@ -252,7 +268,15 @@ void setup() {
   mesh.onNodeTimeAdjusted(&nodeTimeAdjustedCallback);
   mesh.onNodeDelayReceived(&delayReceivedCallback);
 
-  Serial.println("setup ended");
+  Serial.println("setup mesh ended");
+  Serial.print("Connecting Wifi: ");
+    Serial.println(ssid);
+    while (WiFi.begin(ssid, pass) != WL_CONNECTED) {
+      Serial.print(".");
+      delay(500);
+    }
+    Serial.println("");
+    Serial.println("WiFi connected");
 
 }
 
@@ -270,16 +294,34 @@ void sendBroadcast(String topic, String message) {
 
 
 void loop() {
-  if(firstRound){
-    Serial.printf("Write U or D");
-     firstRound=false;
+  message m = bot.getUpdates();
+  if ( m.chat_id != 0 ){ // Checks if there are some updates
+    if (m.sender in whitelist){ //TODO
+        if(m.text==comandi[0]){ // \tapUp
+          if(sendAgainTapparella){
+            sendBroadcast(MOVE_TAPPARELLA_TOPIC,SENS_CMDUP);
+            sendAgainTapparella=false;
+            bot.sendMessage(m.chat_id, "Doing");
+          }else{ //tapparella in funzione, aspettare
+            bot.sendMessage(m.chat_id, "Still moving, please wait");
+          }
+        }else if(m.text==comandi[1]){ // \tapDown
+          if(sendAgainTapparella){
+            sendBroadcast(MOVE_TAPPARELLA_TOPIC,SENS_CMDDOWN);
+            sendAgainTapparella=false;
+            bot.sendMessage(m.chat_id, "Doing");
+          }else{//tapparella in funzione, aspettare
+            bot.sendMessage(m.chat_id, "Still moving, please wait");
+          }
+        }else{ // lista comandi
+          bot.sendMessage(m.chat_id, "These are the available commands");
+          for(String x in comandi){ //TODO
+              bot.sendMessage(m.chat_id, x);
+          }
+        }
+
+    }
+
   }
 
-  command=Serial.readString();
-  if(command.length()>1 && sendAgainTapparella){
-    sendBroadcast(MOVE_TAPPARELLA_TOPIC,command);
-    command="";
-    sendAgainTapparella=false;
-
-  }
 }
