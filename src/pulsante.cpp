@@ -1,92 +1,123 @@
-#include <painlessMesh.h>
 #include <Arduino.h>
+#include <painlessMesh.h>
 #include "interface.h"
 
+
+
 // Prototypes
-void sendMessageTapparella(String msg);
+void sendMessageTapparella(String msg,uint8_t index);
 void receivedCallback(uint32_t from, String & msg);
 void newConnectionCallback(uint32_t nodeId);
 void changedConnectionCallback();
 void nodeTimeAdjustedCallback(int32_t offset);
 void delayReceivedCallback(uint32_t from, int32_t delay);
 
+//myfunctions
+
+void setupMesh();
+void sendMessageTapparella(String msg,uint8_t index );
+void sendMessageAllTapparelle(String msg );
+IPAddress getlocalIP();
+
+//initialization
+IPAddress myIP(0,0,0,0);
+WiFiClient wifiClient;
 Scheduler     userScheduler; // to control your personal task
 painlessMesh  mesh;
-
 SimpleList<uint32_t> nodes;
+bool sendAgainTapparelle[64];
+uint32_t idTapparelle[64];
 
 
-String command;
-uint32_t idTapparella=NULL;
-bool firstRound=true;
-bool sendAgainTapparella=true;
+//code
 
 void setup() {
   Serial.begin(9600);
+  setupMesh();
+  Serial.println("------SETUP MESH COMPLETE------");
+  for (int i=0;i<64;i++){
+    sendAgainTapparelle[i]=true;
+  }
+}
 
-  //mesh.setDebugMsgTypes( ERROR | MESH_STATUS | CONNECTION | SYNC | COMMUNICATION | GENERAL | MSG_TYPES | REMOTE ); // all types on
-  //mesh.setDebugMsgTypes(ERROR | DEBUG | CONNECTION | COMMUNICATION);  // set before init() so that you can see startup messages
-  mesh.setDebugMsgTypes(ERROR | DEBUG | CONNECTION);  // set before init() so that you can see startup messages
-
-  mesh.init(MESH_SSID, MESH_PASSWORD, &userScheduler, MESH_PORT);
+void setupMesh(){
+  mesh.setDebugMsgTypes(ERROR |STARTUP | DEBUG | CONNECTION);  // set before init() so that you can see startup messages
+  mesh.init( MESH_SSID, MESH_PASSWORD,&userScheduler, MESH_PORT, WIFI_AP_STA, 6 );
   mesh.onReceive(&receivedCallback);
+
   mesh.onNewConnection(&newConnectionCallback);
   mesh.onChangedConnections(&changedConnectionCallback);
   mesh.onNodeTimeAdjusted(&nodeTimeAdjustedCallback);
   mesh.onNodeDelayReceived(&delayReceivedCallback);
+  mesh.stationManual(STATION_SSID, STATION_PASSWORD);
+  mesh.setHostname(HOSTNAME);
+  mesh.setRoot(true);
+  mesh.setContainsRoot(true);
+
 }
+
+
 void loop() {
-  if(firstRound){
- 	  Serial.printf("Write U or D");
-	   firstRound=false;
+   if(myIP != getlocalIP()){
+    myIP = getlocalIP();
+    Serial.println("My IP is " + myIP.toString());
+    Serial.printf("Write U or D");
   }
 
-  command=Serial.readString();
-  if(command.length()>1 && sendAgainTapparella){
-    sendMessageTapparella(command);
-    command="";
-	  sendAgainTapparella=false;
-
-  }
-  userScheduler.execute(); // it will run mesh scheduler as well
+  String msg=Serial.readString();
+  sendMessageAllTapparelle(msg);
+  userScheduler.execute();
   mesh.update();
 }
 
-void sendMessageTapparella(String msg) {
-  //TODO sistemare i nodeID per un log
-  //String msg = "Hello from node ";
-  //msg += mesh.getNodeId();
-  //msg += " myFreeMemory: " + String(ESP.getFreeHeap());
-  //mesh.sendBroadcast(msg);
-  if(idTapparella!=NULL){
-    mesh.sendSingle(idTapparella,msg);
-    Serial.printf("Sending message: %s\n", msg.c_str());
-  }else{
-    Serial.printf("Non ci sono tapparelle\n");
-
+void sendMessageAllTapparelle(String msg){
+  for (uint8_t i=0;i<64;i++){
+    if(msg.length()>1 && sendAgainTapparelle[i]){
+      if(idTapparelle[i]!=NULL){
+        sendMessageTapparella(msg,i);
+        msg="";
+        sendAgainTapparelle[i]=false;
+      }
+    }
   }
 
 }
+void sendMessageTapparella(String msg,uint8_t index ) {
+  if (idTapparelle[index]!=NULL){
+    mesh.sendSingle(idTapparelle[index],msg);
+    Serial.printf("Sending message: %s to Tapparella %d \n", msg.c_str(),index);
+  }
+}
+
 
 
 void receivedCallback(uint32_t from, String & msg) {
-  //Serial.printf("startHere: Received from %u msg=%s\n", from, msg.c_str());
-  if(msg.indexOf(TAPPARELLA) >= 0){
-    idTapparella=from;
-    Serial.printf("Setted tapparella \n");
-
+  int index=0;
+  int found=-1;
+  while(index<64 ){
+    if(idTapparelle[index]==from){
+      found=index;
+    }
+    index++;
   }
-	if(msg.indexOf(TAPPARELLADONE)>=0){
+  if((msg.indexOf(TAPPARELLA) >= 0) && (found==-1) ){
+    idTapparelle[(uint8_t)msg[0]]=from;
+    Serial.printf("%d\n",(uint8_t)msg[0]);
+    Serial.printf("Setted tapparella \n");
+  }
+  if((msg.indexOf(TAPPARELLADONE)>=0) && (found!=-1)){
     Serial.printf("Tapparella is done\n");
-		sendAgainTapparella=true;
+		sendAgainTapparelle[found]=true;
 	 	Serial.printf("Write U or D\n");
   }
 
 }
 
+
 void newConnectionCallback(uint32_t nodeId) {
   Serial.printf("--> startHere: New Connection, nodeId = %u\n", nodeId);
 }
+
 
 void changedConnectionCallback() {
   Serial.printf("Changed connections %s\n", mesh.subConnectionJson().c_str());
@@ -103,11 +134,14 @@ void changedConnectionCallback() {
   }
   Serial.println();
 }
-
 void nodeTimeAdjustedCallback(int32_t offset) {
   Serial.printf("Adjusted time %u. Offset = %d\n", mesh.getNodeTime(), offset);
 }
 
 void delayReceivedCallback(uint32_t from, int32_t delay) {
   Serial.printf("Delay to node %u is %d us\n", from, delay);
+}
+
+IPAddress getlocalIP(){
+  return IPAddress(mesh.getStationIP());
 }
