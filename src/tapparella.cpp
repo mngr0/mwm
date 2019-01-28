@@ -2,14 +2,14 @@
 #include <painlessMesh.h>
 #include "interface.h"
 
-#define MOTOR_STEP 15 //no touch
-#define MOTOR_DIR 13
+#define MOTOR_STEP 15 //verde
+#define MOTOR_DIR 13 //viola
 
-#define SENS_UP 12
-#define SENS_DOWN 14
+#define SENS_UP 12 //arancione
+#define SENS_DOWN 14 //giallo
 
-#define STATE_GOING_DOWN 2
-#define STATE_GOING_UP 1
+#define STATE_GOING_DOWN 2 //g
+#define STATE_GOING_UP 1 //
 #define STATE_IDLE 0
 
 int state;
@@ -24,8 +24,7 @@ void changedConnectionCallback();
 
 Scheduler     userScheduler; // to control your personal task
 painlessMesh  mesh;
-//String upDone= "UPDONE";
-//String downDone= "DOWNDONE";
+
 SimpleList<uint32_t> nodes;
 
 Task taskSendMessage( TASK_SECOND * 30, TASK_FOREVER, &sendBroadcast ); // start with a one second interval
@@ -48,9 +47,6 @@ void setup() {
   userScheduler.addTask( taskSendMessage );
   taskSendMessage.enable();
 
-
-  randomSeed(analogRead(A0));
-
   pinMode(MOTOR_DIR,OUTPUT);
   pinMode(MOTOR_STEP,OUTPUT);
   pinMode(SENS_UP,INPUT);
@@ -60,18 +56,16 @@ void setup() {
 }
 
 void tapparella_update() {
-        if(digitalRead(SENS_UP) && state==STATE_GOING_UP){
+        if(!digitalRead(SENS_UP) && state==STATE_GOING_UP){
         state=STATE_IDLE;
         analogWrite(MOTOR_STEP,0);
         Serial.println("UP completed");
-      //  mesh.sendBroadcast(upDone);
         sendDone();
       }
       if(digitalRead(SENS_DOWN) && state==STATE_GOING_DOWN){
         state=STATE_IDLE;
         analogWrite(MOTOR_STEP,0);
         Serial.println("DOWN completed");
-      //  mesh.sendBroadcast(downDone);
         sendDone();
       }
 }
@@ -84,20 +78,26 @@ void loop() {
 }
 
 void sendBroadcast() {
-//  String msg = "IAMTAPPARELLA";
-  mesh.sendBroadcast(TAPPARELLA);
-
+  uint8_t id=23;
+  char buf[sizeof(TAPPARELLA)*4+1];
+  snprintf(buf, sizeof buf, "%s%s", " ", TAPPARELLA);
+  String msg = buf;
+  msg[0]=id;
+  Serial.println("sending ping");
+  Serial.printf("%s\n",buf);
+  mesh.sendBroadcast(msg);
 }
-void sendDone(){
-  mesh.sendSingle(idBrain,TAPPARELLADONE);
 
+void sendDone(){
+  String sndmsg= TAPPARELLADONE;
+  mesh.sendSingle(idBrain,sndmsg);
 }
 
 
 void receivedCallback(uint32_t from, String & msg) {
   Serial.printf("startHere: Received from %u msg=%s\n", from, msg.c_str());
   if(msg.indexOf(SENS_CMDDOWN)>=0){
-    Serial.print("read DOWN,");
+    Serial.print("read DOWN");
     idBrain=from;
     if(state==STATE_IDLE){
       state=STATE_GOING_DOWN;
@@ -109,7 +109,7 @@ void receivedCallback(uint32_t from, String & msg) {
     }
   }
   if(msg.indexOf(SENS_CMDUP)>=0){
-    Serial.print("read UP,");
+    Serial.print("read UP");
     idBrain=from;
     if(state==STATE_IDLE){
       state=STATE_GOING_UP;
