@@ -1,16 +1,16 @@
+
 #include <Arduino.h>
 #include <painlessMesh.h>
 #include "interface.h"
+#include "mesh.h"
 
-
+#define   HOSTNAME         "SmartBrain"
+#define   STATION_SSID     "Ossigeno"
+#define   STATION_PASSWORD "ciao1234"
+#define   HOSTNAME         "MQTT_Bridge"
 
 // Prototypes
-void sendMessageTapparella(String msg,uint8_t index);
 void receivedCallback(uint32_t from, String & msg);
-void newConnectionCallback(uint32_t nodeId);
-void changedConnectionCallback();
-void nodeTimeAdjustedCallback(int32_t offset);
-void delayReceivedCallback(uint32_t from, int32_t delay);
 
 //myfunctions
 
@@ -22,9 +22,6 @@ IPAddress getlocalIP();
 //initialization
 IPAddress myIP(0,0,0,0);
 WiFiClient wifiClient;
-Scheduler     userScheduler; // to control your personal task
-painlessMesh  mesh;
-SimpleList<uint32_t> nodes;
 bool sendAgainTapparelle[64];
 uint32_t idTapparelle[64];
 
@@ -42,9 +39,8 @@ void setup() {
 
 void setupMesh(){
   mesh.setDebugMsgTypes(ERROR |STARTUP | DEBUG | CONNECTION);  // set before init() so that you can see startup messages
-  mesh.init( MESH_SSID, MESH_PASSWORD,&userScheduler, MESH_PORT, WIFI_AP_STA, 6 );
+  mesh.init( MESH_SSID, MESH_PASSWORD, MESH_PORT, WIFI_AP_STA, 6 );
   mesh.onReceive(&receivedCallback);
-
   mesh.onNewConnection(&newConnectionCallback);
   mesh.onChangedConnections(&changedConnectionCallback);
   mesh.onNodeTimeAdjusted(&nodeTimeAdjustedCallback);
@@ -66,7 +62,6 @@ void loop() {
 
   String msg=Serial.readString();
   sendMessageAllTapparelle(msg);
-  userScheduler.execute();
   mesh.update();
 }
 
@@ -114,34 +109,8 @@ void receivedCallback(uint32_t from, String & msg) {
 }
 
 
-void newConnectionCallback(uint32_t nodeId) {
-  Serial.printf("--> startHere: New Connection, nodeId = %u\n", nodeId);
-}
-
-
-void changedConnectionCallback() {
-  Serial.printf("Changed connections %s\n", mesh.subConnectionJson().c_str());
-
-  nodes = mesh.getNodeList();
-
-  Serial.printf("Num nodes: %d\n", nodes.size());
-  Serial.printf("Connection list:");
-
-  SimpleList<uint32_t>::iterator node = nodes.begin();
-  while (node != nodes.end()) {
-    Serial.printf(" %u", *node);
-    node++;
-  }
-  Serial.println();
-}
-void nodeTimeAdjustedCallback(int32_t offset) {
-  Serial.printf("Adjusted time %u. Offset = %d\n", mesh.getNodeTime(), offset);
-}
-
-void delayReceivedCallback(uint32_t from, int32_t delay) {
-  Serial.printf("Delay to node %u is %d us\n", from, delay);
-}
 
 IPAddress getlocalIP(){
   return IPAddress(mesh.getStationIP());
 }
+//*/

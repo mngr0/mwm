@@ -1,6 +1,8 @@
+/*
 #include <Arduino.h>
 #include <painlessMesh.h>
 #include "interface.h"
+#include "mesh.h"
 
 #define MOTOR_STEP 15 //verde
 #define MOTOR_DIR 13 //viola
@@ -12,41 +14,30 @@
 #define STATE_GOING_UP 1 //
 #define STATE_IDLE 0
 
-int state;
 
 // Prototypes
+void receivedCallback(uint32_t from, String & msg);
+
+//my Prototypes
+void tapparella_update();
+void setupMesh();
 void sendDone();
 void sendBroadcast();
-void receivedCallback(uint32_t from, String & msg);
-void newConnectionCallback(uint32_t nodeId);
-void changedConnectionCallback();
 
 
 Scheduler     userScheduler; // to control your personal task
-painlessMesh  mesh;
 
-SimpleList<uint32_t> nodes;
 
 Task taskSendMessage( TASK_SECOND * 30, TASK_FOREVER, &sendBroadcast ); // start with a one second interval
 
 uint32_t idBrain=NULL;
+int state;
 
 void setup() {
   Serial.begin(9600);
-
-
-  //mesh.setDebugMsgTypes( ERROR | MESH_STATUS | CONNECTION | SYNC | COMMUNICATION | GENERAL | MSG_TYPES | REMOTE ); // all types on
-  //mesh.setDebugMsgTypes(ERROR | DEBUG | CONNECTION | COMMUNICATION);  // set before init() so that you can see startup messages
-  mesh.setDebugMsgTypes(ERROR | DEBUG | CONNECTION);  // set before init() so that you can see startup messages
-
-  mesh.init(MESH_SSID, MESH_PASSWORD, &userScheduler, MESH_PORT);
-  mesh.onReceive(&receivedCallback);
-  mesh.onNewConnection(&newConnectionCallback);
-  mesh.onChangedConnections(&changedConnectionCallback);
-
   userScheduler.addTask( taskSendMessage );
   taskSendMessage.enable();
-
+  setupMesh();
   pinMode(MOTOR_DIR,OUTPUT);
   pinMode(MOTOR_STEP,OUTPUT);
   pinMode(SENS_UP,INPUT);
@@ -55,7 +46,7 @@ void setup() {
   Serial.println("setup ended");
 }
 
-void tapparella_update() {
+void checkMovement() {
         if(!digitalRead(SENS_UP) && state==STATE_GOING_UP){
         state=STATE_IDLE;
         analogWrite(MOTOR_STEP,0);
@@ -70,11 +61,20 @@ void tapparella_update() {
       }
 }
 
+void setupMesh(){
+  mesh.setDebugMsgTypes( ERROR | MESH_STATUS | CONNECTION | SYNC | COMMUNICATION | GENERAL | MSG_TYPES | REMOTE ); // all types on
+  mesh.init(MESH_SSID, MESH_PASSWORD, &userScheduler, MESH_PORT);
+  mesh.onReceive(&receivedCallback);
+  mesh.onNewConnection(&newConnectionCallback);
+  mesh.onChangedConnections(&changedConnectionCallback);
+}
 
 void loop() {
   userScheduler.execute(); // it will run mesh scheduler as well
   mesh.update();
-  tapparella_update();
+  if(state!=STATE_IDLE){
+    checkMovement();
+  }
 }
 
 void sendBroadcast() {
@@ -83,8 +83,7 @@ void sendBroadcast() {
   snprintf(buf, sizeof buf, "%s%s", " ", TAPPARELLA);
   String msg = buf;
   msg[0]=id;
-  Serial.println("sending ping");
-  Serial.printf("%s\n",buf);
+  Serial.printf("Sending ping %s to everyone\n",buf);
   mesh.sendBroadcast(msg);
 }
 
@@ -97,42 +96,33 @@ void sendDone(){
 void receivedCallback(uint32_t from, String & msg) {
   Serial.printf("startHere: Received from %u msg=%s\n", from, msg.c_str());
   if(msg.indexOf(SENS_CMDDOWN)>=0){
-    Serial.print("read DOWN");
-    idBrain=from;
+    Serial.print("Read DOWN");
+    if(idBrain!=NULL){
+      idBrain=from;
+    }
     if(state==STATE_IDLE){
       state=STATE_GOING_DOWN;
       analogWrite(MOTOR_STEP,255);
       digitalWrite(MOTOR_DIR, 1);
       Serial.println("IDLE -> GOING DOWN");
     }else{
-      Serial.println("state was not idle");
+      Serial.println("State was not idle, please wait");
     }
   }
   if(msg.indexOf(SENS_CMDUP)>=0){
-    Serial.print("read UP");
-    idBrain=from;
+    Serial.print("Read UP");
+    if(idBrain!=NULL){
+      idBrain=from;
+    }
     if(state==STATE_IDLE){
       state=STATE_GOING_UP;
       analogWrite(MOTOR_STEP,255);
       digitalWrite(MOTOR_DIR, 0);
       Serial.println("IDLE -> GOING UP");
     }else{
-      Serial.println("state was not idle");
+      Serial.println("State was not idle, please wait");
     }
   }
 }
 
-void newConnectionCallback(uint32_t nodeId) {
-  Serial.printf("--> startHere: New Connection, nodeId = %u\n", nodeId);
-}
-
-void changedConnectionCallback() {
-  Serial.printf("Changed connections %s\n", mesh.subConnectionJson().c_str());
-  nodes = mesh.getNodeList();
-  SimpleList<uint32_t>::iterator node = nodes.begin();
-  while (node != nodes.end()) {
-    Serial.printf(" %u", *node);
-    node++;
-  }
-  Serial.println();
-}
+//*/
