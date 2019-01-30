@@ -1,4 +1,4 @@
-
+/*
 #include "interface.h"
 #include "secrets.h"
 #include <Arduino.h>
@@ -17,7 +17,6 @@ void receivedCallback(uint32_t from, String & msg);
 
 //myfunctions
 
-void setupMesh();
 void sendMessageTapparella(String msg,uint8_t index, bool again );
 void sendMessageAllTapparelle(String msg );
 IPAddress getlocalIP();
@@ -102,20 +101,7 @@ void setup() {
   }
 }
 
-void setupMesh(){
-  mesh.setDebugMsgTypes(ERROR |STARTUP | DEBUG | CONNECTION);  // set before init() so that you can see startup messages
-  //mesh.setDebugMsgTypes( ERROR | MESH_STATUS | CONNECTION | SYNC | COMMUNICATION | GENERAL | MSG_TYPES | REMOTE ); // all types on
-  mesh.init( MESH_SSID, MESH_PASSWORD, MESH_PORT, WIFI_AP_STA, 6 );
-  mesh.onReceive(&receivedCallback);
-  mesh.onNewConnection(&newConnectionCallback);
-  mesh.onChangedConnections(&changedConnectionCallback);
-  mesh.onNodeTimeAdjusted(&nodeTimeAdjustedCallback);
-  mesh.onNodeDelayReceived(&delayReceivedCallback);
-  mesh.stationManual(STATION_SSID, STATION_PASSWORD);
-  mesh.setHostname(HOSTNAME);
-  mesh.setRoot(true);
-  mesh.setContainsRoot(true);
-}
+
 
 
 void loop() {
