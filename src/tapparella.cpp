@@ -1,3 +1,4 @@
+
 #include <Arduino.h>
 #include <painlessMesh.h>
 #include "interface.h"
@@ -61,9 +62,7 @@ void checkMovement() {
 }
 
 void setupMesh(){
-  //mesh.setDebugMsgTypes( ERROR | MESH_STATUS | CONNECTION | SYNC | COMMUNICATION | GENERAL | MSG_TYPES | REMOTE ); // all types on
-  mesh.setDebugMsgTypes(ERROR |STARTUP | DEBUG | CONNECTION ); // all types on
-
+  mesh.setDebugMsgTypes(ERROR |STARTUP | DEBUG | CONNECTION);  // set before init() so that you can see startup messages
   mesh.init(MESH_SSID, MESH_PASSWORD, &userScheduler, MESH_PORT);
   mesh.onReceive(&receivedCallback);
   mesh.onNewConnection(&newConnectionCallback);
@@ -80,8 +79,8 @@ void loop() {
 
 void sendBroadcast() {
   uint8_t id=23;
-  char buf[sizeof(TAPPARELLA)*4+1];
-  snprintf(buf, sizeof buf, "%s%s", " ", TAPPARELLA);
+  char buf[sizeof(PING)*4+sizeof(TAPPARELLA)*4+1];
+  snprintf(buf, sizeof (buf), "%s%s%s", " ",PING,TAPPARELLA_NAME);
   String msg = buf;
   msg[0]=id;
   Serial.printf("Sending ping %s to everyone\n",buf);
