@@ -1,4 +1,3 @@
-/*
 #include <Arduino.h>
 #include <painlessMesh.h>
 #include "interface.h"
@@ -62,7 +61,9 @@ void checkMovement() {
 }
 
 void setupMesh(){
-  mesh.setDebugMsgTypes( ERROR | MESH_STATUS | CONNECTION | SYNC | COMMUNICATION | GENERAL | MSG_TYPES | REMOTE ); // all types on
+  //mesh.setDebugMsgTypes( ERROR | MESH_STATUS | CONNECTION | SYNC | COMMUNICATION | GENERAL | MSG_TYPES | REMOTE ); // all types on
+  mesh.setDebugMsgTypes(ERROR |STARTUP | DEBUG | CONNECTION ); // all types on
+
   mesh.init(MESH_SSID, MESH_PASSWORD, &userScheduler, MESH_PORT);
   mesh.onReceive(&receivedCallback);
   mesh.onNewConnection(&newConnectionCallback);
@@ -97,7 +98,7 @@ void receivedCallback(uint32_t from, String & msg) {
   Serial.printf("startHere: Received from %u msg=%s\n", from, msg.c_str());
   if(msg.indexOf(SENS_CMDDOWN)>=0){
     Serial.print("Read DOWN");
-    if(idBrain!=NULL){
+    if(idBrain==NULL){
       idBrain=from;
     }
     if(state==STATE_IDLE){
@@ -111,7 +112,7 @@ void receivedCallback(uint32_t from, String & msg) {
   }
   if(msg.indexOf(SENS_CMDUP)>=0){
     Serial.print("Read UP");
-    if(idBrain!=NULL){
+    if(idBrain==NULL){
       idBrain=from;
     }
     if(state==STATE_IDLE){
