@@ -1,8 +1,10 @@
-
+/*
+#include <ArduinoOTA.h>
 #include <Arduino.h>
 #include <painlessMesh.h>
 #include "interface.h"
 #include "mesh.h"
+#include "ota.h"
 
 #define MOTOR_STEP 15 //verde
 #define MOTOR_DIR 13 //viola
@@ -43,11 +45,15 @@ void setup() {
   userScheduler.addTask( taskSendMessage );
   taskSendMessage.enable();
   setupMesh();
+  Serial.println("------SETUP MESH COMPLETE------");
+  setupOTA();
+  Serial.println("------SETUP OTA COMPLETE------");
   pinMode(MOTOR_DIR,OUTPUT);
   pinMode(MOTOR_STEP,OUTPUT);
   pinMode(SENS_UP,INPUT);
   pinMode(SENS_DOWN,INPUT);
   state=STATE_IDLE;
+  Serial.println("------SETUP PIN COMPLETE------");
   Serial.println("setup ended");
 }
 
@@ -85,6 +91,7 @@ void loop() {
     checkMovement();
   }
   checkAck();
+  ArduinoOTA.handle();
 }
 void checkAck(){
   if(!ack){

@@ -2,6 +2,8 @@
 #include <painlessMesh.h>
 #include "mesh.h"
 
+
+
 SimpleList<uint32_t> nodes;
 painlessMesh  mesh;
 void newConnectionCallback(uint32_t nodeId) {

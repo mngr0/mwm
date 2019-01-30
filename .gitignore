@@ -4,3 +4,4 @@
 .gcc-flags.json
 *.stl
 secrets.h
+tapparella2.cpp

@@ -1,16 +1,14 @@
-/*
+
 #include "interface.h"
 #include "secrets.h"
 #include <Arduino.h>
 #include <painlessMesh.h>
-//#include <TelegramBot.h>
-//#include <WiFi101.h>
+#include <ArduinoOTA.h>
 #include <ESP8266WiFi.h>
 #include <WiFiClientSecure.h>
 #include <UniversalTelegramBot.h>
 #include "mesh.h"
-
-
+#include "ota.h"
 
 
 
@@ -25,6 +23,9 @@ void sendMessageAllTapparelle(String msg );
 IPAddress getlocalIP();
 void checkCrashTapparelle();
 int getIndexTapparella(uint32_t from);
+void setLord(String id);
+void sendMessageToLords(String msg);
+void getMessageTelegram();
 //initialization
 IPAddress myIP(0,0,0,0);
 
@@ -43,6 +44,16 @@ long Bot_lasttime;
 String myLords[MAX_ARRAY];
 //code
 
+
+
+
+
+
+
+
+
+
+
 void setLord(String id){
   for(int i=0;i<MAX_ARRAY;i++){
     if(myLords[i]==id){
@@ -55,6 +66,7 @@ void setLord(String id){
     }
   }
 }
+
 void sendMessageToLords(String msg){
   for(int i=0;i<MAX_ARRAY;i++){
     if(myLords[i]!=""){
@@ -82,6 +94,8 @@ void setup() {
   Serial.begin(9600);
   setupMesh();
   Serial.println("------SETUP MESH COMPLETE------");
+  setupOTA();
+  Serial.println("------SETUP OTA COMPLETE------");
   for (int i=0;i<MAX_ARRAY;i++){
     sendAgainTapparelle[i]=true;
     myLords[i]="";
@@ -109,14 +123,10 @@ void loop() {
     myIP = getlocalIP();
     Serial.println("My IP is " + myIP.toString());
   }
-  //String msg=Serial.readString();
-//  if(msg!=NULL){
-//    sendMessageAllTapparelle(msg);
-//  }
   getMessageTelegram();
   checkCrashTapparelle();
   mesh.update();
-
+  ArduinoOTA.handle();
 }
 
 void checkCrashTapparelle(){
