@@ -1,14 +1,16 @@
 
 #include "interface.h"
+#include "secrets.h"
 #include <Arduino.h>
 #include <painlessMesh.h>
-#include <TelegramBot.h>
+//#include <TelegramBot.h>
+//#include <WiFi101.h>
+#include <ESP8266WiFi.h>
+#include <WiFiClientSecure.h>
+#include <UniversalTelegramBot.h>
 #include "mesh.h"
 
 
-#define   HOSTNAME         "SmartBrain"
-#define   STATION_SSID     "Ossigeno"
-#define   STATION_PASSWORD "ciao1234"
 
 
 
@@ -26,31 +28,91 @@ int getIndexTapparella(uint32_t from);
 //initialization
 IPAddress myIP(0,0,0,0);
 
-//WiFiClient wifiClient;
-bool sendAgainTapparelle[64];
-uint32_t idTapparelle[64];
 
-unsigned long timeSendTapparella[64];
+bool sendAgainTapparelle[MAX_ARRAY];
+uint32_t idTapparelle[MAX_ARRAY];
+
+unsigned long timeSendTapparella[MAX_ARRAY];
 
 // Initialize Telegram BOT
-const char BotToken[] = "770578956:AAFdTjKvEWId9VIOFKxW23DmPEHOosOoS3c";
-//TelegramBot bot (BotToken, mesh);
 
+WiFiClientSecure client;
+UniversalTelegramBot bot(BotToken, client);
+int Bot_mtbs = 1000; //mean time between scan messages
+long Bot_lasttime;
+String myLords[MAX_ARRAY];
 //code
 
+void setLord(String id){
+  for(int i=0;i<MAX_ARRAY;i++){
+    if(myLords[i]==id){
+      break;
+    }
+    if(myLords[i]==""){
+      myLords[i]=id;
+      Serial.printf("Found\n");
+      break;
+    }
+  }
+}
+void sendMessageToLords(String msg){
+  for(int i=0;i<MAX_ARRAY;i++){
+    if(myLords[i]!=""){
+      bot.sendMessage(myLords[i], msg, "");
+    }
+  }
+}
+void getMessageTelegram(){
+  if (millis() > Bot_lasttime + Bot_mtbs)  {
+    int numNewMessages = bot.getUpdates(bot.last_message_received + 1);
+
+    while(numNewMessages) {
+      Serial.println("Received command");
+      for (int i=0; i<numNewMessages; i++) {
+        setLord(bot.messages[i].chat_id);
+        sendMessageAllTapparelle(bot.messages[i].text);
+      }
+      numNewMessages = bot.getUpdates(bot.last_message_received + 1);
+    }
+
+    Bot_lasttime = millis();
+  }
+}
+/*
+void wifiSetup(){
+    WiFi.mode(WIFI_STA);
+    WiFi.disconnect();
+    delay(100);
+
+    // Attempt to connect to Wifi network:
+    Serial.print("Connecting Wifi: ");
+    Serial.println(STATION_SSID);
+    WiFi.begin(STATION_SSID, STATION_PASSWORD);
+
+    while (WiFi.status() != WL_CONNECTED) {
+    Serial.print(".");
+    delay(500);
+    }
+
+    Serial.println("");
+    Serial.println("WiFi connected");
+    Serial.print("IP address: ");
+    Serial.println(WiFi.localIP());
+}
+*/
 void setup() {
   Serial.begin(9600);
   setupMesh();
   Serial.println("------SETUP MESH COMPLETE------");
-  for (int i=0;i<64;i++){
+  for (int i=0;i<MAX_ARRAY;i++){
     sendAgainTapparelle[i]=true;
+    myLords[i]="";
   }
-  //bot.begin();
-  //Serial.printf("Bot setted\n");
 }
 
 void setupMesh(){
   mesh.setDebugMsgTypes(ERROR |STARTUP | DEBUG | CONNECTION);  // set before init() so that you can see startup messages
+  //mesh.setDebugMsgTypes( ERROR | MESH_STATUS | CONNECTION | SYNC | COMMUNICATION | GENERAL | MSG_TYPES | REMOTE ); // all types on
   mesh.init( MESH_SSID, MESH_PASSWORD, MESH_PORT, WIFI_AP_STA, 6 );
   mesh.onReceive(&receivedCallback);
   mesh.onNewConnection(&newConnectionCallback);
@@ -68,21 +130,19 @@ void loop() {
    if(myIP != getlocalIP()){
     myIP = getlocalIP();
     Serial.println("My IP is " + myIP.toString());
-    Serial.printf("Write U or D\n");
   }
-  //message m = bot.getUpdates();
-  String msg=Serial.readString();
-  if(msg!=NULL){
-    sendMessageAllTapparelle(msg);
-
-  }
+  //String msg=Serial.readString();
+//  if(msg!=NULL){
+//    sendMessageAllTapparelle(msg);
+//  }
+  getMessageTelegram();
   checkCrashTapparelle();
   mesh.update();
 
 }
 
 void checkCrashTapparelle(){
-  for(int i=0;i<64;i++){
+  for(int i=0;i<MAX_ARRAY;i++){
     if(sendAgainTapparelle[i]==false){
       if((millis())>=(timeSendTapparella[i]+REFRESH_RATE)){
         ESP.restart();
@@ -94,20 +154,34 @@ void checkCrashTapparelle(){
 
 
 void sendMessageAllTapparelle(String msg){
-  bool found=false;
-  for (uint8_t i=0;i<64;i++){
-    if(msg.length()>1 && sendAgainTapparelle[i]){
-      if(idTapparelle[i]!=NULL){
-        found=true;
-        sendMessageTapparella(msg,i,false);
-        msg="";
+  bool comandFound=false;
+  for(uint8_t j=0;j<MAX_COMANDI;j++ ){
+    if(msg==comands[j]){
+      comandFound=true;
+      bool found=false;
+      for (uint8_t i=0;i<MAX_ARRAY;i++){
+        if(msg.length()>1 && sendAgainTapparelle[i]){
+          if(idTapparelle[i]!=NULL){
+            found=true;
+            sendMessageTapparella(msg,i,false);
+            msg="";
+          }
+        }
       }
+      if(!found){
+        Serial.printf("No tapparelle online\n");
+        sendMessageToLords("No tapparelle online");
+        //ESP.restart(); only to debug
+      }
+
     }
   }
-  if(!found){
-    Serial.printf("No tapparelle online");
-    //ESP.restart(); only to debug
+  if(!comandFound){
+    Serial.printf("Command not valid\n");
+    sendMessageToLords("Command not valid");
+
   }
+
 
 }
 void sendMessageTapparella(String msg,uint8_t index, bool ack ) {
@@ -129,7 +203,7 @@ void sendMessageTapparella(String msg,uint8_t index, bool ack ) {
 int getIndexTapparella(uint32_t from){
   int index=0;
   int found=-1;
-  while(index<64 ){
+  while(index<MAX_ARRAY ){
     if(idTapparelle[index]==from){
       found=index;
     }
@@ -148,7 +222,6 @@ void receivedCallback(uint32_t from, String & msg){
       if(index==-1){
         idTapparelle[(uint8_t)msg[0]]=from;
         Serial.printf("Setted tapparella %d  \n",(uint8_t)msg[0]);
-
       }
     }
 
@@ -156,8 +229,8 @@ void receivedCallback(uint32_t from, String & msg){
   if((msg.indexOf(TAPPARELLADONE)>=0)){
     int index=getIndexTapparella(from);
     Serial.printf("Tapparella is done\n");
+    sendMessageToLords("Tapparelle done");
 		sendAgainTapparelle[index]=true;
-	 	Serial.printf("Write U or D\n");
     sendMessageTapparella(ACK, index, true);
   }
 
