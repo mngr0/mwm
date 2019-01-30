@@ -23,7 +23,7 @@ void tapparella_update();
 void setupMesh();
 void sendDone();
 void sendBroadcast();
-
+void checkAck();
 
 Scheduler     userScheduler; // to control your personal task
 
@@ -32,6 +32,11 @@ Task taskSendMessage( TASK_SECOND * 30, TASK_FOREVER, &sendBroadcast ); // start
 
 uint32_t idBrain=NULL;
 int state;
+
+
+bool ack=true;
+unsigned long timeAnswer;
+
 
 void setup() {
   Serial.begin(9600);
@@ -51,13 +56,17 @@ void checkMovement() {
         state=STATE_IDLE;
         analogWrite(MOTOR_STEP,0);
         Serial.println("UP completed");
+        ack=false;
         sendDone();
+        timeAnswer=millis();
       }
       if(digitalRead(SENS_DOWN) && state==STATE_GOING_DOWN){
         state=STATE_IDLE;
         analogWrite(MOTOR_STEP,0);
         Serial.println("DOWN completed");
+        ack=false;
         sendDone();
+        timeAnswer=millis();
       }
 }
 
@@ -75,11 +84,19 @@ void loop() {
   if(state!=STATE_IDLE){
     checkMovement();
   }
+  checkAck();
 }
-
+void checkAck(){
+  if(!ack){
+    if(millis()>=timeAnswer+REFRESH_RATE){
+      Serial.printf("--------RESTARTING--------\n");
+      ESP.restart();
+    }
+  }
+}
 void sendBroadcast() {
   uint8_t id=23;
-  char buf[sizeof(PING)*4+sizeof(TAPPARELLA)*4+1];
+  char buf[sizeof(PING)*4+sizeof(TAPPARELLA_NAME)*4+1];
   snprintf(buf, sizeof (buf), "%s%s%s", " ",PING,TAPPARELLA_NAME);
   String msg = buf;
   msg[0]=id;
@@ -122,6 +139,10 @@ void receivedCallback(uint32_t from, String & msg) {
     }else{
       Serial.println("State was not idle, please wait");
     }
+  }
+  if(msg.indexOf(ACK)>=0){
+    Serial.print("Read ACK");
+    ack=true;
   }
 }
 

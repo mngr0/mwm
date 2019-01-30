@@ -1,4 +1,4 @@
-
+/*
 #include "interface.h"
 #include "secrets.h"
 #include <Arduino.h>
@@ -78,28 +78,6 @@ void getMessageTelegram(){
     Bot_lasttime = millis();
   }
 }
-/*
-void wifiSetup(){
-    WiFi.mode(WIFI_STA);
-    WiFi.disconnect();
-    delay(100);
-
-    // Attempt to connect to Wifi network:
-    Serial.print("Connecting Wifi: ");
-    Serial.println(STATION_SSID);
-    WiFi.begin(STATION_SSID, STATION_PASSWORD);
-
-    while (WiFi.status() != WL_CONNECTED) {
-    Serial.print(".");
-    delay(500);
-    }
-
-    Serial.println("");
-    Serial.println("WiFi connected");
-    Serial.print("IP address: ");
-    Serial.println(WiFi.localIP());
-}
-*/
 void setup() {
   Serial.begin(9600);
   setupMesh();
@@ -145,6 +123,7 @@ void checkCrashTapparelle(){
   for(int i=0;i<MAX_ARRAY;i++){
     if(sendAgainTapparelle[i]==false){
       if((millis())>=(timeSendTapparella[i]+REFRESH_RATE)){
+      Serial.printf("--------RESTARTING--------\n");
         ESP.restart();
       }
     }
