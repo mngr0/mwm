@@ -1,4 +1,4 @@
-
+/*
 #include <ArduinoOTA.h>
 #include <Arduino.h>
 #include <painlessMesh.h>
@@ -14,10 +14,10 @@
 
 //possibly states
 #define STATE_GOING_DOWN 2
-#define STATE_GOING_UP 1 
+#define STATE_GOING_UP 1
 #define STATE_IDLE 0
 
-
+#define ID_TAPPARELLA 42;
 // Prototypes
 void receivedCallback(uint32_t from, String & msg);
 
@@ -26,18 +26,18 @@ void tapparella_update();
 void sendDone();
 void sendBroadcast();
 void checkAck();
-void stopMotor(char* msg);
+void stopMotor();
 Scheduler     userScheduler; // to control your personal task
 
 
 Task taskSendMessage( TASK_SECOND * 30, TASK_FOREVER, &sendBroadcast ); // start with a one second interval
 
 //brain id
-uint32_t idBrain=NULL;
+uint32_t idBrain=0;
 //state of the tapparella
 int state;
 //your id
-#define ID 42;
+
 
 //variables for ack
 bool ack=true;
@@ -46,6 +46,7 @@ unsigned long timeAnswer;
 
 void setup() {
   Serial.begin(9600);
+  //Serial.print(REBUILD);
   userScheduler.addTask( taskSendMessage );
   taskSendMessage.enable();
   setupMesh();
@@ -63,25 +64,26 @@ void setup() {
 
 void checkMovement() {
       if(!digitalRead(SENS_UP) && state==STATE_GOING_UP){
-        stopMotor("Up");
+        Serial.println("Up Completed");
+        stopMotor();
         ack=false;
         sendDone();
         timeAnswer=millis();
       }
       if(digitalRead(SENS_DOWN) && state==STATE_GOING_DOWN){
-        stopMotor("Down");
+        Serial.println("Down Completed");
+        stopMotor();
         ack=false;
         sendDone();
         timeAnswer=millis();
       }
 }
 
-void stopMotor(char* msg){
+void stopMotor(){
   state=STATE_IDLE;
   analogWrite(MOTOR_STEP,0);
-  Serial.printf("%s completed\n",msg);
-
 }
+
 
 void loop() {
   userScheduler.execute(); // it will run mesh scheduler as well
@@ -105,7 +107,7 @@ void sendBroadcast() {
   char buf[sizeof(PING)*4+sizeof(TAPPARELLA_NAME)*4+1];
   snprintf(buf, sizeof (buf), "%s%s%s", " ",PING,TAPPARELLA_NAME);
   String msg = buf;
-  msg[0]=ID;
+  msg[0]=ID_TAPPARELLA;
   Serial.printf("Sending ping %s to everyone\n",buf);
   mesh.sendBroadcast(msg);
 }
@@ -120,7 +122,7 @@ void receivedCallback(uint32_t from, String & msg) {
   Serial.printf("startHere: Received from %u msg=%s\n", from, msg.c_str());
   if(msg.indexOf(SENS_CMDDOWN)>=0){
     Serial.print("Read DOWN");
-    if(idBrain==NULL){
+    if(idBrain==0){
       idBrain=from;
     }
     if(state==STATE_IDLE){
@@ -134,7 +136,7 @@ void receivedCallback(uint32_t from, String & msg) {
   }
   if(msg.indexOf(SENS_CMDUP)>=0){
     Serial.print("Read UP");
-    if(idBrain==NULL){
+    if(idBrain==0){
       idBrain=from;
     }
     if(state==STATE_IDLE){

@@ -1,4 +1,4 @@
-/*
+
 #include "interface.h"
 #include "secrets.h"
 #include <Arduino.h>
@@ -39,7 +39,7 @@ unsigned long timeSendTapparella[MAX_ARRAY];
 WiFiClientSecure client;
 UniversalTelegramBot bot(BotToken, client);
 int Bot_mtbs = 1000; //mean time between scan messages
-long Bot_lasttime;
+unsigned long Bot_lasttime;
 String myLords[MAX_ARRAY];
 //code
 
@@ -98,6 +98,7 @@ void setup() {
   for (int i=0;i<MAX_ARRAY;i++){
     sendAgainTapparelle[i]=true;
     myLords[i]="";
+    idTapparelle[i]=0;
   }
 }
 
@@ -136,7 +137,7 @@ void sendMessageAllTapparelle(String msg){
       bool found=false;
       for (uint8_t i=0;i<MAX_ARRAY;i++){
         if(msg.length()>1 && sendAgainTapparelle[i]){
-          if(idTapparelle[i]!=NULL){
+          if(idTapparelle[i]!=0){
             found=true;
             sendMessageTapparella(msg,i,false);
             msg="";
@@ -160,7 +161,7 @@ void sendMessageAllTapparelle(String msg){
 
 }
 void sendMessageTapparella(String msg,uint8_t index, bool ack ) {
-  if (idTapparelle[index]!=NULL){
+  if (idTapparelle[index]!=0){
     mesh.sendSingle(idTapparelle[index],msg);
     if(!ack){
       Serial.printf("Sending message: %s to Tapparella %d \n", msg.c_str(),index);

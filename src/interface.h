@@ -6,6 +6,7 @@
 
 #define SENS_CMDUP "/Up"
 #define SENS_CMDDOWN "/Down"
+
 char* comands[MAX_COMANDI]={SENS_CMDUP,SENS_CMDDOWN};
 
 char * PING = "IAM";
