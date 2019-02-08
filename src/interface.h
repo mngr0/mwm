@@ -2,22 +2,20 @@
 #define INTERFACE_H
 
 #define MAX_ARRAY 64
-#define MAX_COMANDI 10
+#define MAX_COMANDI 2
 
-#define SENS_CMDUP "/Up"
-#define SENS_CMDDOWN "/Down"
+#define CMDUP "/Up"
+#define CMDDOWN "/Down"
 
-char* comands[MAX_COMANDI]={SENS_CMDUP,SENS_CMDDOWN};
+#define NUM_CATEGORIE 1
+#define SYMBOL_ALL "*"
 
-char * PING = "IAM";
-char * TAPPARELLA_NAME = "TAPPARELLA";
-char * LUCE_NAME = "LUCE";
-char * DONE = "DONE";
-char* TAPPARELLADONE= "TAPPARELLADONE";
+char* comandsTapparelle[MAX_COMANDI]={CMDUP,CMDDOWN};
 
-#define ACK "ACK"
+//char* comands[MAX_COMANDI*NUM_CATEGORIE]={&comandsTapparelle};
 
 
-unsigned long REFRESH_RATE= 10000;
+
+long MAX_TIME= 10000;
 
 #endif

@@ -1,7 +1,6 @@
+.pio
 .pioenvs
 .piolibdeps
 .clang_complete
 .gcc-flags.json
-*.stl
 secrets.h
-tapparella2.cpp
