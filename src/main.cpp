@@ -1,9 +1,11 @@
+
 #include "secrets.h"
 #include "interface.h"
 #include <ESP8266WiFi.h>
 #include <WiFiClientSecure.h>
 #include <UniversalTelegramBot.h>
 #include <ArduinoOTA.h>
+
 //Different for every tapparella
 #define ID_TAPPARELLA "1T"
 
@@ -19,8 +21,7 @@
 #define STATE_IDLE 0
 //IDLE;DOWN;UP
 int state;
-//if is moving
-int inProgress;
+//when last time moved
 long lastMovement;
 //Telegram shit
 WiFiClientSecure client;
@@ -30,7 +31,20 @@ int Bot_mtbs = 1000; //mean time between scan messages
 long Bot_lasttime;   //last time messages' scan has been done
 //every user that requested an operation
 String users[MAX_ARRAY];
+String whitelist[MAX_ARRAY]={"176937436"};
 
+
+void otaSETUP();
+void wifiSETUP();
+void pinsSETUP();
+void setup();
+void setUser();
+void sendMessageToAllUsers(String msg);
+void executeCommand(char* command);
+void telegramHandle();
+void movementHandle();
+void restart();
+void loop();
 
 //TODO WHITELIST
 void otaSETUP(){
@@ -125,48 +139,41 @@ void sendMessageToAllUsers(String msg){
   }
 }
 
-void movement(int direction){
-  if(direction==0){
-    if(state==STATE_IDLE){
-      state=STATE_GOING_UP;
-      analogWrite(MOTOR_STEP,255);
-      digitalWrite(MOTOR_DIR, 0);
-      Serial.println("IDLE -> GOING UP");
-    }else{
-      Serial.println("State was not idle, please wait");
-    }
 
-  }else{
-    if(state==STATE_IDLE){
-      state=STATE_GOING_DOWN;
-      analogWrite(MOTOR_STEP,255);
-      digitalWrite(MOTOR_DIR, 1);
-      Serial.println("IDLE -> GOING DOWN");
-    }else{
-      Serial.println("State was not idle, please wait");
-    }
-  }
-
-}
 
 
 void executeCommand(char* command){
   char str[100];
-  if(command==CMDUP){
-    movement(0);
+  if(command==CMDUP ){
+    state=STATE_GOING_UP;
+    analogWrite(MOTOR_STEP,255);
+    digitalWrite(MOTOR_DIR, 0);
+    Serial.println("IDLE -> GOING UP");
     snprintf(str, sizeof str, "%s%s%s", "Tapparella ",ID_TAPPARELLA, " is going up");
-    sendMessageToAllUsers(str);
-    inProgress=1;
     lastMovement=millis();
+    sendMessageToAllUsers(str);
   }
-  else if (command==CMDDOWN){
-    movement(1);
+  else if (command==CMDDOWN ){
+    state=STATE_GOING_DOWN;
+    analogWrite(MOTOR_STEP,255);
+    digitalWrite(MOTOR_DIR, 1);
+    Serial.println("IDLE -> GOING DOWN");
     snprintf(str, sizeof str, "%s%s%s","Tapparella ", ID_TAPPARELLA, "is going down");
-    sendMessageToAllUsers(str);
-    inProgress=1;
     lastMovement=millis();
+    sendMessageToAllUsers(str);
   }
+
 }
+
+int checkWhitelist(String name){
+  for(int i=0;i<MAX_ARRAY;i++){
+    if(whitelist[i]==name){
+      return 1;
+    }
+  }
+  return 0;
+}
+
 
 void telegramHandle(){
   if (millis() > Bot_lasttime + Bot_mtbs)  {
@@ -175,29 +182,39 @@ void telegramHandle(){
     while(numNewMessages) {
       int commandPresent=0;
       for (int i=0; i<numNewMessages; i++) {
-        String msg=bot.messages[i].text;
-        Serial.println(msg);
-        setUser(bot.messages[i].chat_id);
-        if(msg.indexOf(ID_TAPPARELLA)>=0 || msg.indexOf(SYMBOL_ALL)>=0){
-          if(inProgress==0){
-            for(int j=0;j<MAX_COMANDI;j++){
-              if (msg.indexOf(comandsTapparelle[j])>=0){
-                  commandPresent=1;
-                  executeCommand(comandsTapparelle[j]);
-                  break;
+
+        if(checkWhitelist(bot.messages[i].from_id)==1){
+          String msg=bot.messages[i].text;
+          Serial.println(msg);
+          setUser(bot.messages[i].chat_id);
+          if(msg.indexOf(ID_TAPPARELLA)>=0 || msg.indexOf(SYMBOL_ALL)>=0){
+            if(msg.indexOf(RESTART)>=0){
+              restart();
+            }
+            if(state==STATE_IDLE){
+              for(int j=0;j<MAX_COMANDI;j++){
+                if (msg.indexOf(comandsTapparelle[j])>=0){
+                    commandPresent=1;
+                    executeCommand(comandsTapparelle[j]);
+                    break;
+                }
+              }
+              if(commandPresent==0){
+                  bot.sendMessage(bot.messages[i].chat_id, "Command not found", "");
               }
             }
-            if(commandPresent==0){
-                bot.sendMessage(bot.messages[i].chat_id, "Command not found", "");
+            else{
+              char str[100];
+              snprintf(str, sizeof str, "%s%s%s","Please wait, Tapparella ", ID_TAPPARELLA, "is still going");
+              bot.sendMessage(bot.messages[i].chat_id, str, "");
+
             }
           }
-          else{
-            char str[100];
-            snprintf(str, sizeof str, "%s%s%s","Please wait, Tapparella ", ID_TAPPARELLA, "is still going");
-            bot.sendMessage(bot.messages[i].chat_id, str, "");
+        }else{
+          bot.sendMessage(bot.messages[i].chat_id, "You are not authorized to use this bot", "");
 
-          }
         }
+
 
       }
       numNewMessages = bot.getUpdates(bot.last_message_received + 1);
@@ -215,7 +232,7 @@ void movementHandle() {
         Serial.println("UP completed");
         snprintf(str, sizeof str, "%s%s%s","Tapparella ", ID_TAPPARELLA, " up completed");
         sendMessageToAllUsers(str);
-        inProgress=0;
+
       }
       else if(digitalRead(SENS_DOWN) && state==STATE_GOING_DOWN){
         state=STATE_IDLE;
@@ -223,19 +240,27 @@ void movementHandle() {
         Serial.println("DOWN completed");
         snprintf(str, sizeof str, "%s%s%s","Tapparella ", ID_TAPPARELLA, " down completed");
         sendMessageToAllUsers(str);
-        inProgress=0;
+
       }
 }
-void crashHandle(){
-  if(millis()>=lastMovement+MAX_TIME && inProgress==1){
+
+void restart(){
     Serial.printf("--------RESTARTING--------\n");
-      ESP.restart();
-  }
+    char str[100];
+    snprintf(str, sizeof str, "%s%s%s","Tapparella ", ID_TAPPARELLA, " is restarting");
+    sendMessageToAllUsers(str);
+    ESP.restart();
+
 }
 void loop() {
   if(state!=STATE_IDLE){
     movementHandle();
+    if(millis()>=lastMovement+MAX_TIME){
+      restart();
+    }
+
   }
   ArduinoOTA.handle();
   telegramHandle();
+
 }

@@ -6,9 +6,11 @@
 
 #define CMDUP "/Up"
 #define CMDDOWN "/Down"
+#define RESTART "/Restart"
 
 #define NUM_CATEGORIE 1
 #define SYMBOL_ALL "*"
+
 
 char* comandsTapparelle[MAX_COMANDI]={CMDUP,CMDDOWN};
 
