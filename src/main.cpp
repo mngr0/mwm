@@ -1,11 +1,10 @@
-
 #include "secrets.h"
 #include "interface.h"
 #include <ESP8266WiFi.h>
 #include <WiFiClientSecure.h>
-#include <UniversalTelegramBot.h>
-#include <ArduinoOTA.h>
 
+#include <ArduinoOTA.h>
+#include <painlessMesh.h>
 //Different for every tapparella
 #define ID_TAPPARELLA "1T"
 
@@ -19,6 +18,8 @@
 #define STATE_GOING_DOWN 2 //g
 #define STATE_GOING_UP 1 //
 #define STATE_IDLE 0
+
+
 //IDLE;DOWN;UP
 int state;
 //when last time moved
@@ -41,12 +42,57 @@ void setup();
 void setUser();
 void sendMessageToAllUsers(String msg);
 void executeCommand(char* command);
+int checkWhitelist(String name);
 void telegramHandle();
 void movementHandle();
 void restart();
 void loop();
 
-//TODO WHITELIST
+#define   MESH_PREFIX     "whateverYouLike"
+#define   MESH_PASSWORD   "somethingSneaky"
+#define   MESH_PORT       5555
+#define   STATION_PORT    5555
+#define HOSTNAME "Gesu"
+
+Scheduler     userScheduler;
+
+
+uint8_t   station_ip[4] =  {10,10,10,1}; // IP of the server
+
+// prototypes
+
+void receivedCallback( uint32_t from, String &msg );
+
+painlessMesh  mesh;
+
+
+
+void receivedCallback( uint32_t from, String &msg ) {
+  Serial.printf("bridge: Received from %u msg=%s\n", from, msg.c_str());
+}
+void newConnectionCallback(uint32_t nodeId) {
+    Serial.printf("--> startHere: New Connection, nodeId = %u\n", nodeId);
+}
+
+void meshSETUP() {
+  mesh.setDebugMsgTypes( ERROR | STARTUP | CONNECTION );  // set before init() so that you can see startup messages
+
+
+  //mesh.init( MESH_PREFIX, MESH_PASSWORD, MESH_PORT,&userScheduler, WIFI_AP_STA, 6 );
+  mesh.init( MESH_PREFIX, MESH_PASSWORD, MESH_PORT, STA_AP, WIFI_AUTH_WPA2_PSK, 6 );
+  //mesh.init(MESH_PREFIX, String password, optional uint16_t port = 5555, optional enum nodeMode connectMode = STA_AP, optional wifi_auth_mode_t authmode = WIFI_AUTH_WPA2_PSK, optional uint8_t channel = 1, optional uint8_t phymode = WIFI_PROTOCOL_11G, optional uint8_t maxtpw = 82, optional uint8_t hidden = 0, optional uint8_t maxconn = MAX_CONN)
+  mesh.stationManual(SECRET_SSID, SECRET_PASS, STATION_PORT, station_ip);
+  mesh.setHostname(HOSTNAME);
+  // Bridge node, should (in most cases) be a root node. See [the wiki](https://gitlab.com/painlessMesh/painlessMesh/wikis/Possible-challenges-in-mesh-formation) for some background
+  //mesh.setRoot(true);
+  // This and all other mesh should ideally now the mesh contains a root
+  //mesh.setContainsRoot(true);
+  mesh.onNewConnection(&newConnectionCallback);
+
+
+  mesh.onReceive(&receivedCallback);
+}
+
 void otaSETUP(){
   ArduinoOTA.onStart([]() {
     String type;
@@ -55,9 +101,7 @@ void otaSETUP(){
     } else { // U_SPIFFS
       type = "filesystem";
     }
-
-    // NOTE: if updating SPIFFS this would be the place to unmount SPIFFS using SPIFFS.end()
-    Serial.println("Start updating " + type);
+Serial.println("Start updating " + type);
   });
   ArduinoOTA.onEnd([]() {
     Serial.println("\nEnd");
@@ -91,7 +135,7 @@ void wifiSETUP(){
   Serial.println(SECRET_SSID);
   WiFi.begin(SECRET_SSID, SECRET_PASS);
 
-  while (WiFi.status() != WL_CONNECTED) {
+while (WiFi.status() != WL_CONNECTED) {
     Serial.print(".");
     delay(500);
   }
@@ -99,6 +143,9 @@ void wifiSETUP(){
   Serial.println("WiFi connected");
   Serial.print("IP address: ");
   Serial.println(WiFi.localIP());
+  //client->connect(SERVER_HOST_NAM)
+  Serial.print("WifiConnected\n");
+
 }
 
 void pinsSETUP(){
@@ -110,13 +157,7 @@ void pinsSETUP(){
 }
 
 
-void setup() {
-  Serial.begin(115200);
-  pinsSETUP();
-  wifiSETUP();
-  otaSETUP();
-  state=STATE_IDLE;
-}
+
 
 
 void setUser(String id){
@@ -250,17 +291,4 @@ void restart(){
     snprintf(str, sizeof str, "%s%s%s","Tapparella ", ID_TAPPARELLA, " is restarting");
     sendMessageToAllUsers(str);
     ESP.restart();
-
-}
-void loop() {
-  if(state!=STATE_IDLE){
-    movementHandle();
-    if(millis()>=lastMovement+MAX_TIME){
-      restart();
-    }
-
   }
-  ArduinoOTA.handle();
-  telegramHandle();
-
-}
